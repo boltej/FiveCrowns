@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang='en'>
+
+<head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+
+  <title>500 Card Game</title>
+  <style>
+    * {
+      margin: 5;
+      padding: 5;
+      box-sizing: border-box;
+    }
+
+    body {
+      font: 13px Helvetica, Arial;
+      background: darkslategray;
+    }
+
+    /*
+      form { padding: 3px; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: 0.5%; }
+      form button { width: 9%; border: none; padding: 10px; }
+      */
+
+    .loglist {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      height: 7em;
+      max-height: 7em;
+      overflow-x: hidden;
+      overflow-y: auto;
+      /*border-style: solid;
+        border-width: 1px; */
+    }
+
+    .loglist li {
+      padding: 5px 10px;
+    }
+
+    .loglist li:nth-child(odd) {
+      background: #eee;
+    }
+
+    .bordered {
+      border-radius: 0.4em;
+      border-style: solid;
+      border-color: teal;
+      border-width: 1px;
+      margin: 1em;
+      padding: 1em;
+    }
+
+    .padded {
+      margin: 1.5em;
+    }
+
+    .playName {
+      text-align: center;
+      font-size: large;
+      font-weight: bold;
+      color: teal;
+    }
+
+    #video-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, 250px);
+      grid-auto-rows: 250px;
+    }
+
+    video {
+      width:100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/cardsJS/dist/cards.min.css" />
+  <script src="https://unpkg.com/cardsJS/dist/cards.min.js" type="text/javascript"></script>
+  <script>
+    const ROOM_ID = '<%= roomID %>'  // rendered by server (replaces roomID with server-side roomID variable
+  </script>
+
+  <script defer src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="script.js" defer></script>
+
+</head>
+
+<body style='background:darkslategrey'>
+  <div class="ui menu">
+    <div class="header item"
+      style="padding-right:2em;background-color: darkslategray;color:whitesmoke;font-size: large;">
+      Five Hundred - The Card Game
+    </div>
+    <div class="right item active">
+      <span id="player" style="font-size:1em;font-weight: bold;color:darkslategrey"></span>
+    </div>
+  </div>
+
+  <div id='video-grid'></div>
+
+
+
+  <div id='mainPanel'>
+    <div id='gameMsgPanel' class="ui message">
+      <div id='gameMsgHdr' class="header">Waiting for more players</div>
+      <p id='gameMsgText'>As soon as four players join, the game will start</p>
+    </div>
+
+    <div id='bidPanel' class="ui raised teal hidden segment ">
+      <span id='currentBid'>Current Bid: None</span>
+      <hr />
+      <div id='yourBid'>
+        <span>Your Bid:</span>
+
+        <select id='ddlBids' class="ui selection dropdown">
+        </select>
+
+        <button id='placeBid' class="ui teal button" onclick='PlaceBid(false);return false;'>Place Bid</button>
+        <button id='passBid' class="ui button" onclick="PlaceBid(true);return false;">Pass</button>
+      </div>
+    </div>
+
+    <div class="ui grid" style="width:100%">
+      <!--
+      <div class="row">
+        <div class="four wide column">
+          <video autoplay muted class="video" id="T0P0video"></video>
+        </div>
+        <div class="four wide column">
+          <video autoplay muted class="video" id="T0P1video"></video>
+        </div>
+        <div class="four wide column">
+          <video autoplay muted class="video" id="T1P0video"></video>
+        </div>
+        <div class="four wide column">
+          <video autoplay muted class="video" id="T1P1video"></video>
+        </div>
+      </div>
+    -->
+
+
+      <div class="row">
+        <div class="ten wide column padded">
+          <div class="ui raised segment">
+            <div class="ui teal ribbon label">My Hand</div>
+
+            <div id='hand-spades' class="hand vhand-compact">
+              <img class='card' src='cards/AS.svg'>
+            </div>
+            <div id='hand-clubs' class="hand vhand-compact">
+            </div>
+            <div id='hand-diamonds' class="hand vhand-compact">
+            </div>
+            <div id='hand-hearts' class="hand vhand-compact">
+            </div>
+            <div id='hand-extras' class="hand vhand-compact">
+            </div>
+          </div>
+        </div>
+        <div class="four wide column padded">
+          <div class="ui raised segment">
+            <div class="ui teal right ribbon label">Play</div>
+            <br />
+            <table style='width:100%'>
+              <tr>
+                <td style='width:33%'></td>
+                <td id='T0P0' style='width:33%;text-align: center;'>
+                  <span id='T0P0name' class='playName'></span><br />
+                  <img id='T0P0card' class='playCard' src=''></img>
+                </td>
+                <td style='width:33%'></td>
+              </tr>
+              <tr>
+                <td id='T1P1' style='text-align: center;'>
+                  <span id='T1P1name' class='playName'></span><br />
+                  <img id='T1P1card' class='playCard' src=''></img>
+                </td>
+                <td></td>
+                <td id='T1P0' style='text-align: center;'>
+                  <span id='T1P0name' class='playName'></span><br />
+                  <img id='T1P0card' class='playCard' src=''></img>
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td id='T0P1' style='text-align: center;'>
+                  <span id='T0P1name' class='playName'></span><br />
+                  <img id='T0P1card' class='playCard' src=''></img>
+                </td>
+                <td>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+        </div>
+      </div>
+      <div class="row">
+        <div class="ten wide column padded">
+          <div class="ui raised segment">
+            <div class="ui teal ribbon label">Chat</div>
+            <br />
+            <ul id="messages" class="loglist"></ul>
+
+            <div class="ui action input" style="width:80%">
+              <input id="m" type="text" width="90%" placeholder="Type your message here...">
+              <button class="ui button" onclick="SendChatMessage();return false;">Send</button>
+            </div>
+          </div>
+        </div>
+        <div class="four wide column padded">
+          <div class="ui raised segment">
+            <div class="ui teal right ribbon label">Game Info</div>
+            <br />
+            <span id='bid'><b>Bid:</b></span><br /><br/>
+            <span><b>Team A</b></span><br />
+            <span style="padding-left:1em" id="teamAplayers"><b>Players:</b> </span>
+            <br />
+            <span style="padding-left:1em" id="teamAtricks"><b>Tricks:</b> 0</span>
+            <br />
+            <span style="padding-left:1em" id="teamAscore"><b></b>Score:</b> 0</span>
+            <br />
+            <br />
+            <span><b>Team B</b></span><br />
+            <span style="padding-left:2em" id="teamBplayers"><b>Players:</b></b> </span>
+            <br />
+            <span style="padding-left:2em" id="teamBtricks"><b></b>Tricks:</b> 0</span>
+            <br />
+            <span style="padding-left:2em" id="teamBscore"><b>Score:</b> 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr />
+    <div style='width:100%'>
+      <div class="ui teal right button" onclick="StartGame(); return false;">Restart Game</div>
+    </div>
+  </div>
+  <div id="login" class="ui overlay fullscreen modal">
+    <div class="header">Welcome to Five Hundred!</div>
+    <div class="content">
+
+      <div id='gamefull' class="ui negative message hidden">
+        <div class="header">Sorry - this game is full</div>
+        <p>Please try again later!</p>
+      </div>
+      <div id='loginpanel'>
+        <div class="ui labeled input">
+          <div class="ui label">
+            Name:
+          </div>
+          <input id="username" type="text" placeholder="Your name...">
+        </div>
+        <hr />
+        <div class="ui form">
+          <div class="grouped fields">
+            <label>Select your Team</label>
+            <div class="field">
+              <div id="playTeamA" class="ui radio checked checkbox">
+                <input type="radio" name="pickteam" checked="checked">
+                <label id='llTeamA'>Team A</label>
+              </div>
+            </div>
+            <div class="field">
+              <div id="playTeamB" class="ui radio checkbox">
+                <input type="radio" name="pickteam">
+                <label id='llTeamB'>Team B</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div id='btnStart' class="ui approve button">Start Playing</div>
+    </div>
+  </div>
+
+
+  <div id='approveDiscard' class="ui mini modal hidden">
+    <div class="header">Discard this card?</div>
+    <div class="content">
+      <p>Do you want to discard the <span id='discardCard'></span></p>
+      <span id='discardsRemaining'></span>
+    </div>
+    <div class="actions">
+      <div class="ui approve button">Yes</div>
+      <div class="ui cancel button">No</div>
+    </div>
+  </div>
+
+  <div id='approvePlay' class="ui mini modal hidden">
+    <div class="header">Play this card?</div>
+    <div class="content">
+      <p>Do you want to play the <span id='playCard'></span>?</p>
+    </div>
+    <div class="actions">
+      <div class="ui approve button">Yes</div>
+      <div class="ui cancel button">No</div>
+    </div>
+  </div>
+
+
+
+</body>
+
+</html>

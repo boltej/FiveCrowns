@@ -1,0 +1,1719 @@
+﻿<!doctype html>
+<html lang='en'>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+
+    <title>Five Crowns Card Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font: 13px Helvetica, Arial;
+            background-color:purple;
+        }
+
+        .loglist {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            height: 13em;
+            max-height: 13em;
+            overflow-x: hidden;
+            overflow-y: auto;
+            color: black;
+        }
+
+            .loglist li {
+                padding: 5px 10px;
+                background-color: #ddd;
+            }
+
+                .loglist li:nth-child(odd) {
+                    background-color: #eee;
+                }
+
+        .bordered {
+            border-radius: 0.4em;
+            border-style: solid;
+            border-color: violet;
+            border-width: 1px;
+            margin: 1em;
+            padding: 1em;
+        }
+
+        .padded {
+            margin: 1.5em;
+        }
+
+        .playName {
+            text-align: center;
+            font-size: large;
+            font-weight: bold;
+            color: yellow;
+        }
+
+        .scoreboard {
+            font-size: large;
+            font-weight: normal;
+            color: whitesmoke;
+        }
+
+
+        .currentPlayer {
+            border-style: solid;
+            border-radius: 0.4em;
+            border-width: 2px;
+            border-color: lawngreen
+        }
+
+        .pastPlayer {
+            border-style: solid;
+            border-radius: 0.4em;
+            border-width: 2px;
+            border-color: red;
+        }
+
+        .playCard {
+            width: 100%;
+        }
+
+        .scoresContainer {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            align-content: stretch;
+            padding: 1em;
+            background-color: purple;
+            margin-bottom: 1em;
+        }
+
+        .score {
+            font-size: xx-large;
+            color: yellow;
+        }
+
+        .discardCount {
+            font-size: xx-large;
+            font-weight: bold;
+        }
+
+        .obsPanel {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            align-content: stretch;
+            padding: 1em;
+            color: white;
+            background-color: black;
+            margin-bottom: 1em;
+        }
+
+
+
+        table.sortable {
+            border-collapse: collapse;
+            width: 100%;
+            max-height: 10em;
+        }
+
+            table.sortable th,
+            table.sortable td {
+                padding: 10px;
+                text-align: center;
+            }
+
+            table.sortable thead {
+                background-color: #000;
+                color: #fff;
+                overflow-y: auto;
+                height: 100px;
+            }
+
+            table.sortable th:hover {
+                cursor: pointer;
+            }
+
+            table.sortable td {
+                text-align: center;
+            }
+
+        .blink {
+            animation: blink-animation 1s steps(5, start) infinite;
+            -webkit-animation: blink-animation 1s steps(5, start) infinite;
+        }
+
+        @keyframes blink-animation {
+            to {
+                visibility: hidden;
+            }
+        }
+
+        @-webkit-keyframes blink-animation {
+            to {
+                visibility: hidden;
+            }
+        }
+    </style>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.8.7/dist/semantic.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/cardsJS/dist/cards.min.css" />
+    <script src="https://unpkg.com/cardsJS/dist/cards.min.js" type="text/javascript"></script>
+    <script>
+        const ROOM_ID = '<%= roomID %>'  // rendered by server (replaces roomID with server-side roomID variable
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="DataTables/datatables.min.css" />
+    <script type="text/javascript" src="DataTables/datatables.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="chartJS/Chart.min.css" />
+    <script type="text/javascript" src="chartJS/Chart.min.js"></script>
+
+</head>
+
+<body style="background-color:royalblue">
+    <!--<audio id='chime'>
+        <source src="/Chime.mp3" />
+    </audio>-->
+    <div class="ui menu" style="margin-bottom:2px">
+        <div class="header item"
+             style="padding-right:2em;background-color: darkslategray;color:whitesmoke;font-size: large;">
+            Five Crowns - The Card Game
+        </div>
+        <div id='gameMsgPanel' class="ui message" style="width:100%;margin:0">
+            <div style="float:right">
+                <button id="gameMsgBtn" class="ui violet button" style="margin-left:2em">Start Game</button>
+            </div>
+            <div id='gameMsgHdr' class="header">Waiting for more players...</div>
+            <p id='gameMsgText'>
+                Tap the "Start" button to begin a game.
+            </p>
+        </div>
+        <div class="right item active">
+            <span id="player" style="font-size:1em;font-weight: bold;color:darkslategrey"></span>
+        </div>
+    </div>
+
+    <div id='mainPanel'>
+        <div class="scoresContainer">
+            <div style="width:60%;text-align:center">
+                <span id="round" class="score">Round</span>
+                <i class='yellow angle double right icon'></i>
+                <span id="wildcard" class="score">Wildcard</span>
+                <span id="lastRound" class="score blink" style="color:red;float:left;display:none">Last Round</span>
+                <span id="play" class="score" style="color:ghostwhite;float:right">(-)</span>
+            </div>
+        </div>
+        <div id='gridPanel' class="ui grid" style="width:100%">
+            <div class="row">
+                <div class="nine wide column padded">
+                    <div class="ui raised black inverted segment" style="min-height:240px">
+                        <div class="ui violet ribbon label">My Hand</div>
+                        <div id="myHand" class="ui centered grid" style="margin-left:1em;margin-right:1em">
+                            <div class="row">
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-spades' class="hand vhand-compact" style="display:inline-block">
+                                    </div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-clubs' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-diamonds' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-hearts' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-stars' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='hand-wildcards' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;float:right">
+                                    <button id='btnFinalizePlay' class="ui violet button" style="font-size:large" onclick='FinalizePlay();return false;'>I'm done<br />with this play</button>
+                                    <hr />
+                                    <button id='btnUndoPlay' class="ui violet button" style="font-size:large" onclick='UndoPlay();return false;'>Undo my discard.<br />I changed my mind</button>
+                                    <hr />
+                                    <button id='btnGoOut' class="ui violet button"  style="font-size:large" onclick='GoOut();return false;'>Go Out!</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="divGoOutRequest" class="ui centered grid" style="margin-left:1em;margin-right:1em">
+                            <hr />
+                            <div class="row">
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-spades' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-clubs' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-diamonds' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-hearts' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-stars' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;">
+                                    <div id='goout-hand-wildcards' class="hand vhand-compact" style="display:inline-block"></div>
+                                </div>
+                                <div style="display:inline-block;padding-top:0.3em;float:right">
+                                    <button id='btnApproveGoOut' class="ui violet button" style="font-size:large" onclick='ApproveGoOut();return false;'>Yes, it looks legit</button>
+                                    <hr />
+                                    <button id='btnDenyGoOut' class="ui red button" style="font-size:large" onclick='DenyGoOut();return false;'>I don't think so...</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="three wide column padded">
+                    <div class="ui raised black inverted segment" style="min-height:240px">
+                        <div class="ui violet right ribbon label">Play</div>
+                        <br />
+                        <table>
+                            <tr><th style="text-align:center">Draw Pile</th><th style="text-align:center">Discard Pile</th></tr>
+                            <tr>
+                                <td id="divDrawPile"><img src="/cards/RED_BACK.svg" class="card draw-pile" style="width:100%;text-align:center" /></td>
+                                <td id="divDiscardPile"><img src="/cards/RED_BACK.svg" style="width:100%;text-align:center" /></td>
+                            </tr>
+                        </table>
+                        <!--  <div>
+                            <div id="divDrawPile" style="display:inline-block;text-align:center">
+                                <div style="text-align:center">Draw Pile</div>
+                                <img src="/cards/RED_BACK.svg" class="card draw-pile" style="width:100%;text-align:center" />;
+                            </div>
+                            <div id="divDiscardPile" style="display: inline-block;text-align: center">
+                                <div style="text-align:center">Discard Pile</div>
+                                <img src="/cards/RED_BACK.svg" style="width:100%;text-align:center" />
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
+                <div class="two wide column padded">
+                    <div class="ui raised black inverted segment" style="min-height:240px">
+                        <div class="ui violet right ribbon label">Scoreboard</div>
+                        <br />
+                        <div id="divScoreboard"></div>
+                    </div>
+                </div>
+            </div>
+            <!--
+            <div class="row"
+                    <div class="seven wide column padded" style="height:36em">
+                        <div class="ui raised black inverted segment" style="height:34em;">
+                            <div class="ui violet right ribbon label">Leaderboard</div>
+                            <br />
+                            <table id="leaderboard" style="overflow:auto;width:100%"></table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="sixteen wide column">
+                        <hr />
+                        <div class="ui violet right button" onclick="StartGame(true); return false;">
+                            Restart Game
+                        </div>
+                        <div class="ui violet right button" onclick="Redeal(); return false;">Redeal Hand</div>
+                    </div>
+                </div>  -->
+        </div>
+    </div>
+
+
+
+
+
+    <div id='gameCompleted' class="ui mini inverted modal hidden">
+        <div id="winner" class="header"></div>
+        <div class="content">
+            <p><span id='loser'></span></p>
+        </div>
+
+        <hr />
+        <img id="gameCompletedImg" style="width:100%" src="" />
+        <hr />
+
+        <div class="actions">
+            <div class="ui approve button">Continue</div>
+        </div>
+    </div>
+
+    <div id="join" class="ui overlay fullscreen modal">
+        <div class="header">Welcome to Five Crowns!</div>
+        <div class="content">
+
+            <div id='joinpanel' style="width:50%">
+
+                <div id='joinMsg' class="ui green message">
+                    <div class="header">Enter your name below.</div>
+                </div>
+
+                <div class="ui labeled input">
+                    <div class="ui label">Enter your Name:</div>
+                    <input id="username1" type="text" placeholder="New Player..." />
+                    <div class="ui label"> -- OR -- Select your Name from this list:</div>
+                    <select id="selectUser" onchange="SelectUserName">
+                        <option value="">--Select from below--</option>
+                    </select>
+
+                </div>
+                <hr />
+                <br />
+                <div class="header">Active Tables</div>
+                <div id="noActiveGames" style="padding-left:2em">There are currently no active tables</div>
+                <div id="activeGames" class="ui segment">
+                    <div id="joinRoomsList" class="ui relaxed divided list">
+                    </div>
+                </div>
+                <hr />
+                <br />
+                <div class="header">OR</div>
+                <br />
+                <div class="ui violet button" onclick="StartNewRoom(); return false;">Start a New Table</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="text/javascript" defer>
+
+        /*
+Note:
+a "play" is one card being played
+a "round" is four cards being played, one from each player
+a "hand" is one set of ten plays (a complete hand of cards)
+a "game" is a set of rounds, that finishes when a team gets 500 points
+*/
+
+        let roomID = '';
+        let username = '';
+        let wild = 3;
+
+        const ENABLE_NONE = 0;
+        const ENABLE_DRAW = 1
+        const ENABLE_HAND = 2;
+ 
+
+
+        let myPlayer = 0;
+        let observers = [];
+        let $selectedCard = null;
+        let discardsRemaining = 0;
+        let currentRound = 0;
+        let currentSocketID = '';
+        let currentPlayerName = '';
+        let gameIsActive = true;
+        let gameIsStarted = false;
+        let isActivePlayer = false;
+        let isObserver = false;
+
+        let userMsgTxt = '';
+        let userMsgHdr = '';
+        let userMsgGreen = false;
+
+        cards.options.spacing = 0.4;
+
+        // game phase constants (must mach those in app.js)
+        const GP_PREGAME = 0;
+        const GP_SUSPENDED = 1;
+        const GP_GAMESTARTED = 2;
+        const GP_PLAYINGROUND = 3;
+        const GP_LASTROUND = 4;
+        const GP_ROUNDCOMPLETE = 5;
+        const GP_GAMECOMPLETE = 6;
+
+        let socket = null;
+
+        //$(function () {
+        //$(document).ready(() => {
+            socket = io('/', {
+                //transports: ['websocket'],
+                //autoConnect: true
+            });
+        //});
+       
+
+        $(document).ready(()=>{
+            // on startup
+            var select = document.getElementById("selectUser");
+            socket.emit('get playerlist', (playerlist) => {
+                for (const player of playerlist) {
+                    //var el = document.createElement("option");
+                    //el.textContent = playerjoin
+                    //el.value = player;
+                    //select.appendChild(el);
+                }
+            });
+
+            $('#btnFinalizePlay').css('display', 'none');
+            $('#btnUndoPlay').css('display', 'none');
+            $('#btnGoOut').css('display', 'none');
+            $('#btnApproveGoOut').css('display', 'none');
+            $('#btnDenyGoOut').css('display', 'none');
+            $('#divGoOutRequest').hide();
+            $('#gameMsgBtn').on('click', StartGame);
+            $('#myHandAll').hide();
+        });
+
+
+
+        function Test() {
+            //$('#myHand').hide();
+            $('#myHandAll').show();
+
+            //let hand = ['JS', '8S', '5S', 'AC', 'TC', '6C', '4C', 'TH', '5H', '4H'];
+            let hand = ['AS', 'KS', '6S', '5S', 'AC', 'KC', 'QC', 'JD', '7D', '4D'];  // notrump test
+            //let hand = ['', '', '', '', '', '', '', '', '', ''];
+
+            //hand.sort(SortCards);
+            //DistributeHand(hand, 'obs-T0P0-', 65);
+
+            socket.emit('suggest bid from hand', hand, (suggestedBid) => {
+                //ToastMsg('Your Suggested Bid was ' + suggestedBid);  // last one
+                $('#suggestBid')
+                    .modal({
+                        onShow: function () {
+                            $('#sugBid').text(suggestedBid);
+                        },
+                        onApprove: function () {
+                            return true;
+                        }
+                    })
+                    .modal('show');
+            });
+        }
+
+        //Test();
+
+
+
+        //---------------------------------------------------------
+        // message handlers
+        //---------------------------------------------------------
+        socket.on('user disconnected', (team, player, username, role) => {
+            //lastGameMsgHdr = $('#gameMsgHdr').html();
+            //lastGameMsgText = $('#gameMsgText').html();
+            //lastGameMsgState = $('#gameMsgPanel').hasClass('green') ? true : false;
+            if (role === 'player' || role === 'bot') {
+                let msgHdr = 'Player ' + username + ' has left the game.';
+                let msgTxt = 'Game play will be continued without this player';
+                SetGameMsg(msgHdr, msgTxt, null, false);
+                //gameIsActive = false;  // suspend play if leaving user has role of 'observer'
+                //if (peers[userID])
+                //    peers[userID].close();
+            }
+        });
+
+        //socket.on('chat message', (msg) => {
+        //    $('#messages').prepend($('<li>').text(msg));
+        //});
+
+        // a new room was added.  Update login/join screen
+        socket.on('room added', (_roomID) => {
+            socket.emit('get rooms', (rooms) => {
+                PopulateActiveRooms(rooms);
+            });
+        });
+
+
+        // a play was added to a room.  Update login/join screen
+        socket.on('update rooms', () => {
+            socket.emit('get rooms', (rooms) => {
+                PopulateActiveRooms(rooms);
+            });
+        });
+
+        // a player has been added to the game
+        socket.on('player added', (newPlayer, players) => {
+            UpdateScoreboard(players, players[0]);
+        });
+
+        socket.on('game started', (gameState) => {
+            UpdateGameState(gameState);
+            UpdateLeaderboard();
+            ToastMsg('The game is afoot!', "Let's get started...", 10);
+        });
+
+        function UpdateScoreboard(players, activePlayer) {
+            let html = '<div class="ui relaxed divided list" style="font-size:large" >';
+
+            // sort players by score
+            players.sort((a, b) => { return a.currentScore < b.currentScore; });
+
+            let first = true;
+            for (const p of players) {
+                if (p.playerID == activePlayer.playerID)
+                    html += '<div class="item" style="background-color:purple"><div class="content"><div class="header" style="color:whitesmoke">' + p.username + '</div><div class="description" style="color:whitesmoke">current Score: ' + p.currentScore + '</div></div></div>';
+                else {
+                    html += '<div class="item"><div class="content"><div class="header" style="color:whitesmoke">' + p.username + '</div><div class="description" style="color:whitesmoke">current Score: ' + p.currentScore + '</div></div></div>';
+                    first = false;
+                }
+            }
+            html += '</div>';
+            $('#divScoreboard').html(html);
+        }
+
+        function UpdateGameState(gameState) {
+
+            switch (gameState.gamePhase) {
+                case GP_PREGAME:
+                    userMsgHdr = 'Waiting to start game...';
+                    userMsgGreen = true;
+                    userMsgTxt = 'One player should hit the continue button when ready to proceed';
+                    SetGameMsg(userMsgHdr, userMsgTxt, StartGame, userMsgGreen);
+                    break;
+
+                case GP_SUSPENDED:
+                    break;
+
+                case GP_GAMESTARTED:
+                    $('#round').text('Round 1');
+                    $('#wildcard').text("Wildcard is '3'");
+                    userMsgHdr = 'Starting game...';
+                    userMsgTxt = '';
+                    userMsgGreen = true;
+                    SetGameMsg(userMsgHdr, userMsgTxt, null, userMsgGreen);
+                    break;
+
+                case GP_PLAYINGROUND:
+                    $('#round').text('Round ' + gameState.currentRound);
+                    $('#wildcard').text("Wildcard is '" + (gameState.currentRound + 2) + "'");
+                    break;
+
+                case GP_ROUNDCOMPLETE:
+                case GP_GAMECOMPLETE:
+
+            }
+        }
+        /*
+        class GameState {
+            gameStarted = false;
+            gamePhase = GP_PREGAME;
+            currentPlay = -1;
+            currentPlayer = null;
+            currentRound = -1;
+            winningPlayer = -1;
+            drawPile = [];
+            discardPile = [];
+            constructor() {
+            }
+        }
+
+        class Player {
+            username = '';
+            role = '';    // 'player' | 'observer' | 'suspended' | 'bot'
+            playerID = -1;  // index in player array
+            hand = [];
+            currentScore = 0;
+            roomID = '';
+            socketID = '';
+        */
+        function GetMe(players) {
+            for (const p of players) {
+                if (p.username = username)
+                    return p;
+            }
+            return null;
+        }
+
+        // signals a round is about to start
+        socket.on('start round', (gameState, players) => {
+            UpdateGameState(gameState);
+
+            userMsgHdr = 'Starting round';
+            userMsgTxt = 'Current Round is ' + gameState.currentRound;
+            userMsgGreen = true;
+            SetGameMsg(userMsgHdr, userMsgTxt, null, userMsgGreen);
+
+            $('#lastRound').css('display', 'none');
+
+            // distribute cards
+            const my = GetMe(players);
+            wild = gameState.currentRound + 2;
+            DistributeHand(my.hand, '', 90);
+            UpdateDiscard(gameState.discardPile.length > 0 ? gameState.discardPile[0] : '');
+        });
+
+        // the server is asking for a card to be played
+        socket.on('play card', (round, player, playCount) => {
+            console.log('player=' + player.username + ', playcount=' + playCount);
+
+            $('#play').text('(' + playCount + ')');
+
+            // hide hand buttons
+            //$('#btnFinalizePlay').css('display', 'none');
+            //$('#btnUndoPlay').css('display', 'none');
+            //$('#btnGoOut').css('display', 'none');
+
+            let isMe = false;
+            if (player.username === username)
+                isMe = true;
+
+            userMsgTxt = isMe ? "Pick from either the draw deck or discard pile, then discard a card from your hand" : 'Please wait for your turn';
+            userMsgHdr = isMe ? 'Your Turn to Play!' : 'Current Player is ' + player.username;
+            userMsgGreen = isMe;
+            SetGameMsg(userMsgHdr, userMsgTxt, null, userMsgGreen);
+
+            HighlightCurrentPlayer(player.username);
+
+            if (isMe) {
+                SetHandActive(ENABLE_DRAW); // drawdiscard active
+            } else {
+                SetHandActive(ENABLE_NONE);
+            }
+        });
+
+
+        // if a redeal is made, reset the interface
+        socket.on('redeal', () => {
+            firstCardPlayedInRound = '';
+            trumpSuit = '';
+            ResetPlayPanel();
+        });
+
+        socket.on('update hand', (hand,_wild) => {
+            wild = _wild;
+            DistributeHand(hand,'', 90);
+        });
+
+        socket.on('update discard', (discard) => {
+            UpdateDiscard(discard);
+        });
+
+        const DRAW_CLICKED = 0;
+        const DISCARD_CLICKED = 1;
+        const HAND_CLICKED = 2;
+
+        function OnDrawClicked(evt) {
+            socket.emit('get drawcard', roomID, (drawcard) => {
+                if (drawcard !== '') {  // make sure deck isn't empty
+                    console.log('Drawing card: ' + drawcard);
+                    socket.emit('card clicked', roomID, drawcard, DRAW_CLICKED);  // 1=allow discard
+                    AddCardToHand(drawcard);
+                } else {
+                }
+            });
+            return false;
+        }
+
+        function OnDiscardClicked(evt) {
+            let card = $(evt.target).prop('id');  // e.g. 4H2  how does this get added to the hand?
+            console.log('Picking up card from DISCARD: ' + card);
+            socket.emit('card clicked', roomID, card, DISCARD_CLICKED);  // 1= allow discard
+            AddCardToHand(card);
+            return false;
+        }
+
+        // "in-hand"
+        function OnCardClicked(evt) {
+            let card = $(evt.target).prop('id');  // e.g. 4H2
+            console.log('Playing card from HAND: ' + card);
+            RemoveCardFromHand(card);
+            socket.emit('card clicked', roomID, card, HAND_CLICKED);
+            $('#btnFinalizePlay').css('display', 'inline-block');
+            $('#btnUndoPlay').css('display', 'inline-block');
+            $('#btnGoOut').css('display', 'inline-block');
+            return false;
+        }
+
+        function SetHandActive(enable) { // enable=0 (disable), =1 (enable draw), =2 (enable discard)
+            cards.playCard = null;
+            
+            if (enable == ENABLE_NONE) {
+                $('.draw-pile').off('click');
+                $('.discard-pile').off('click');
+                $('.in-hand').off('click');
+                console.log("disabling all cards");
+            }
+            else if (enable == ENABLE_DRAW) {
+                $('.draw-pile').on('click', OnDrawClicked);
+                $('.discard-pile').on('click', OnDiscardClicked);
+                $('.in-hand').off('click');
+                console.log('Enabling DRAW and DISCARD piles - applied to ' + ($('.draw-pile').length+$('.discard-pile').length) + ' cards');
+            }
+            else if (enable == ENABLE_HAND) {
+                $('.draw-pile').off('click');
+                $('.discard-pile').off('click');
+                $('.in-hand').on('click', OnCardClicked);
+                console.log('Enabling HAND - applied to ' + $('.in-hand').length + ' cards');
+            }
+        } 
+
+        function FinalizePlay() {
+            $('#btnFinalizePlay').css('display', 'none');   // hide "finalize middle" button
+            $('#btnUndoPlay').css('display', 'none');   // hide "finalize middle" button
+            $('#btnGoOut').css('display', 'none');   // hide "finalize middle" button
+            socket.emit('play complete', roomID);         // let the server know where are done
+        }
+
+        function UndoPlay() {
+            //$('#btnUndoPlay').css('display', 'none');   // hide "finalize middle" button
+            //socket.emit('play complete', roomID);         // let the server know where are done
+        }
+
+
+        function GoOut() {
+            let hand = GetCurrentHand();
+            $('#btnApproveGoOut').css('display', 'block');
+            $('#btnDenyGoOut').css('display', 'block');
+            socket.emit('request go out', roomID);         // let the server know we're are done
+        }
+
+        function ApproveGoOut() {
+            socket.emit('approve out', roomID, username);         // let the server know we're are done
+            FinalizePlay();
+        }
+
+        function DenyGoOut() {
+            socket.emit('deny out', roomID, username);         // let the server know we're are done
+        }
+        // Sent by:
+        //  Server                       Client
+        //                       <--   'card clicked'
+        // 'update discard'      --> (updates discard if needed)
+        // 'card click complete' --> (updates discard if needed)
+        //                       <--   'play complete'
+        //                       <--   'play complete'
+        //
+
+        socket.on('card click complete', (card, source) => {
+            let enableMode = ENABLE_NONE;  // disable all
+            if (source == DRAW_CLICKED || source == DISCARD_CLICKED)
+                enableMode = ENABLE_HAND; // enable hand
+            else if (source == HAND_CLICKED)
+                enableMode = ENABLE_NONE;
+            SetHandActive(enableMode);
+        });
+
+        socket.on('go out request', (player) => {
+            $('#divGoOutRequest').show();
+            DistributeHand(player.hand, 'goout-', 90);
+        });
+
+        socket.on('go out request approved', (players, lastRoundPlays) => {
+            ToastMsg('Entering the last round', 'Go Out Request Approved!', 6);
+            const me = GetMe(players);
+            $('#divGoOutRequest').hide();
+            $('#lastRound').css('display', 'inline-block');
+        });
+
+        socket.on('go out request denied', () => {
+            ToastMsg('Play will continue...', 'Go Out Request Denied!', 6);
+            $('#divGoOutRequest').hide();
+        });
+
+        socket.on('update scoreboard', (players, activePlayer) => {
+            UpdateScoreboard(players, activePlayer);
+            console.log('update scoreboard');
+        });
+
+        
+        function RemoveCardFromHand(cardID) {
+            // if the card is in the current hand, remove it
+            //$('.hand').children().each((i, card) => {
+            //    if ($(card).attr('src').slice(6, 8) === cardID)
+            //        $(card).remove();
+            //});
+            const _cardID = cardID[0] + cardID[1];
+            
+            $('#hand-spades').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+
+            $('#hand-clubs').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+
+            $('#hand-diamonds').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+            $('#hand-hearts').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+            $('#hand-stars').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+            $('#hand-wildcards').children().each((i, card) => {
+                if ($(card).attr('src').slice(6, 8) === _cardID) {
+                    $(card).remove();
+                }
+            });
+        }
+
+
+        function AddCardToHand(cardID) {
+            let hand = GetCurrentHand();
+            hand.push(cardID);
+            DistributeHand(hand,'', 90);
+        }
+
+        socket.on('round complete', (round, winnerName, teamAtricks, teamBtricks) => {
+            ToastMsg('You won round ' + (round + 1), 'Congratulations ' + winnerName + '!', 10);
+
+            // open face nello? then show the bidder's hand
+            //if (bid==='No' && round===0 && isObserver === false && username !== bidderName) { // show the bidders hand in the observer pane
+            //    $('#openNelloHand').show();
+            //    $('#on-name').text(bidderName);
+            //    socket.emit('get hand', roomID, bidTeam, bidPlayer, (hand) => {
+            //        hand.sort(SortCards);
+            //        DistributeHand(hand, 'on-', 90);
+            //    });
+            //}
+
+            ResetPlayPanel();
+        });
+
+
+
+
+        socket.on('game complete', (winner, players, imgURL) => {
+            let me = GetMe(players);
+
+             $('#winner').html('Winner is ' + winner.username + ' with <span style="font-size:large">' + winner.currentScore + '</span> points!');
+            $('#loser').html('Your score was  ' + me.currentScore + ' points.');
+            $('#gameCompletedImg').attr('src', imgURL);
+            $("#gameCompleted").modal('show');
+        });
+
+        
+
+        $("#join")
+            .modal({
+                closeable: false,
+                onShow: function () {
+                    socket.emit('get rooms', (rooms) => {
+                        PopulateActiveRooms(rooms);
+                    });
+                }
+            })
+            .modal('show');
+
+
+        function PopulateActiveRooms(rooms) {
+            let $list = $('#joinRoomsList');
+            $list.empty();
+
+            if (rooms.length === 0) {
+                $('#noActiveGames').show();
+                $('#activeGames').hide();
+            }
+            else {
+                $('#noActiveGames').hide();
+                $('#activeGames').show();
+            }
+
+            let i = 1;
+            for (r of rooms) {
+                let players = [];
+                let playerCount = 0;
+                for (p of r.players) {
+                    if (p.role === 'player' || p.role === 'bot') {
+                        players.push(p.username);
+                        playerCount++;
+                    }
+                }
+                let pStr = players.join();
+                pStr = pStr.replace(',', ', ');
+                let button = "ui violet button";
+                let roomLabel = 'Table ' + i + ': Accepting more players';
+
+                if (r.gamePhase >= GP_GAMESTARTED)
+                    roomLabel = "Table " + i + ':  Game is underway'
+                //if (playerCount >= 4) {
+                //    button = "ui disabled button";
+                //    roomLabel = 'Table ' + i + ': This game is full';
+                //}
+                i++;
+
+                $list.append('<div class="item" >'
+                    + '<div class="right floated content">'
+                    + '  <div class="ui violet button" onclick="JoinRoom(\'' + r.roomID + '\',1); return false;">Join as Observer</div>'
+                    + '</div>'
+                    + '<div class="right floated content">'
+                    + '  <div class="' + button + '" onclick="JoinRoom(\'' + r.roomID + '\', 0); return false;">Join as Player</div>'
+                    + '</div>'
+                    + '<i class="large middle aligned user friends icon"></i>'
+                    + '<div class="content">'
+                    + '  <div class="header">' + roomLabel + '</div>'
+                    + '  <div class="description">Players: ' + pStr + '</div>'
+                    + '</div></div>');
+            }
+        }
+
+        function JoinRoom(_roomID, role) {
+            username = $("#username1").val();
+            // strip out illegal characters
+            username = username.replace(/[<,>,&,=\,]/gi, '');
+            if (username.length === 0) {
+                $('#joinMsg').removeClass('green').addClass('red');
+                return false;
+            }
+
+            roomID = _roomID;
+
+            $("#player").text("Player: " + username);
+
+            let _role = 'player';  // role==0
+            switch (role) {
+                case 1:  // observer
+                    $('#obsPanel').show();
+                    _role = 'observer';
+                    break;
+
+                case 0:  // role='player'
+                    $('#obsPanel').hide();
+                    break;
+
+                default:
+                    break;
+            }
+
+            socket.emit("new player", roomID, username, _role);
+            $('#join').modal('hide');
+            return true;
+        }
+
+        //function SendChatMessage() {
+        //    socket.emit('chat message', roomID, '[' + username + '] ' + $('#m').val());
+        //    $('#m').val('');
+        //}
+
+        function Observe(team, player) {
+            // let server know this observer is changing teams
+            socket.emit('update team', roomID, socket.id, team, player);
+            $('#myHandAll').hide();
+            $('#myHand').show();
+
+            if (team !== -1) {
+                socket.emit('get hand', roomID, team, player, (hand) => {
+                    hand.sort(SortCards);
+                    DistributeHand(hand, '', 90);
+                    console.log('Receiving hand: ' + hand.join());
+                    CountCards();
+                });
+            }
+        }
+
+        function ObserveAll() {
+            // let server know this observer is changing teams
+            socket.emit('update team', roomID, socket.id, -1, -1);
+            $('#myHand').hide();
+            $('#myHandAll').show();
+
+            // get hands
+            for (let team of [0, 1]) {
+                for (let player of [0, 1]) {
+                    socket.emit('get hand', roomID, player, (hand) => {
+                        hand.sort(SortCards);
+                        let pre = 'obs-T' + team + 'P' + player + '-';
+                        DistributeHand(hand, pre, 65);
+                    });
+                }
+            }
+        }
+
+        function StartGame(restart) {
+            socket.emit('start game', roomID, restart);
+            $('#gameMsgBtn').hide();
+        }
+
+        function Redeal() {
+            socket.emit('redeal', roomID);
+        }
+
+        function SelectUserName() {
+            alert("Selected");
+        }
+
+        function ResumeGame(team, player) {
+            socket.emit('get state', roomID, (gs, teams, players) => {
+                // we are resuming a game because a player or observer joined.  If that player is
+                // this player, update their state - otherwise, ignore.
+                gameIsActive = true;
+                let sender = false;
+
+                // narrow to "this" player only, while collecting other player names
+                for (let p of players) {
+                    if (p.socketID === socket.id) { // is this player me?
+                        if (p.team === team && p.player === player)
+                            sender = true;
+                        break;
+                    }
+                }
+
+                // if I'm not the player added, don't update my state
+                if (sender === false)
+                    return;
+
+                for (p of players) {
+                    if (p.role === 'player' || p.role === 'bot')
+                        playerNames.push(p.username);
+                }
+
+                let msg = 'Current players are ' + playerNames.join().replace('/,/g', ', ');
+                SetGameMsg('Resuming Game', msg, null, true);
+
+                //let roomID = '';
+                //let username = "";
+                // team info set in'add player'
+                //let team = 0;
+                //let teamA = [];
+                //let teamB = [];
+                //let observers = [];
+                teamAScore = teams[0].score;
+                teamBScore = teams[1].score;
+                //let $selectedCard = null;
+                //let discardsRemaining = 0;
+                firstCardPlayedInRound = gs.firstCardPlayed; // card ID
+                trumpSuit = gs.trumpSuit;
+                currentRound = gs.currentRound;
+                //let currentSocketID = '';
+                //let currentPlayerName = '';
+                //let observeeSocketID = '';
+
+                // update UI
+
+                // update scoreboard
+                let teamAtricks = teams[0].tricks;
+                let teamBtricks = teams[1].tricks;
+                $('#teamAscore').html(teamA.join() + ': <span class="score">' + teamAScore + '</span>  (' + teamAtricks + ')');
+                $('#teamBscore').html(teamB.join() + ': <span class="score">' + teamBScore + '</span>  (' + teamBtricks + ')');
+
+                // bid summary
+                SetBidInScoreboard(gs.winningBidder, gs.currentBid);
+
+                // update bid options
+                AddBidOptions();
+
+                // are we currently bidding? then cycle through options, removing as needed
+                if (gs.gamePhase === GP_BIDDING) { // not first bid or prior pass?
+                    $('#ddlBids option').each(function () {
+                        let value = $(this).val();  // e.g. "RS"
+                        if (CompareBids(value, gs.currentBid) <= 0)  // + if a>b, - if a<b
+                            $(this).remove();
+                    });
+                    // select top value
+                    $('#ddlBids')[0].selectedIndex = 0;
+                }
+
+                // put the current hand in the My Hand window
+                for (let p of players) {
+                    if (socket.id === p.socketID) { /// is this us?
+                        let hand = p.hand;
+                        hand.sort(SortCards);
+                        DistributeHand(hand, '', 90);
+                        console.log('Resuming hand: ' + hand.join());
+                        break;
+                    }
+                }
+                CountCards();
+
+                // depending on game state
+                SetGameMsg(userMsgHdr, userMsgTxt, null, userMsgGreen);
+            });
+
+        }
+
+
+        function ClearCardsFromPlayArea() {
+            $('.playCard').attr('src', ''); // clear play area
+        }
+
+
+        function DistributeHand(hand, pre, width) {
+            hand.sort(SortCards);
+
+            let $spades = $('#' + pre + 'hand-spades');
+            let $clubs = $('#' + pre + 'hand-clubs');
+            let $diamonds = $('#' + pre + 'hand-diamonds');
+            let $hearts = $('#' + pre + 'hand-hearts');
+            let $stars = $('#' + pre + 'hand-stars');
+            let $wildcards = $('#' + pre + 'hand-wildcards');
+            $spades.empty();
+            $clubs.empty();
+            $diamonds.empty();
+            $hearts.empty();
+            $stars.empty();
+            $wildcards.empty();
+
+            for (const card of hand) {  // card is like '3R' or 'TC'. jokers are 'JJ'
+                let rank, suit;
+                [rank, suit] = GetRankAndSuit(card);  // rank=3-13 (King), Joker=50,
+                let id = pre + card;
+                const _card = card[0] + card[1];
+                if (rank > 13 || rank == wild)
+                    $wildcards.prepend("<img id='" + id + "' class='card' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+
+                else {
+                    switch (suit) {
+                        case 'S':
+                            $spades.prepend("<img id='" + id + "' class='card in-hand' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                        case 'C':
+                            $clubs.prepend("<img id='" + id + "' class='card in-hand'  style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                        case 'D':
+                            $diamonds.prepend("<img id='" + id + "' class='card in-hand' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                        case 'H':
+                            $hearts.prepend("<img id='" + id + "' class='card in-hand' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                        case 'R':
+                            $stars.prepend("<img id='" + id + "' class='card in-hand' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                        default:
+                            // shouldn't ever get here
+                            $wildcards.prepend("<img id='" + id + "' class='card in-hand' style='width:" + width + "px' src='cards/" + _card + ".svg' />");
+                            break;
+                    }
+                }
+
+                // for every card, bring to front if hovering
+                $(".card").mouseenter((evt) => {
+                    let src = evt.target.src;
+                    let id = evt.target.id;
+                    // change the order of the siblings so this one is on top
+
+                    // get parent (hand-xxxx)
+                    //let parent = evt.target.parentNode;
+                    //let $parent = $(parent);
+                    //let _this = this;
+                    //let __this = $(this);
+                    //let a = 1;
+                });
+            }
+        }
+
+        function UpdateDiscard(discard) {
+            // draw pile is covered, discard pils has last discard
+            //$('#divDrawPile').html('<img class="card draw-pile" src="/cards/RED_BACK.svg" style="width:100%;text-align:center" />');
+
+            if (discard === null || discard === '')
+                $('#divDiscardPile').html("");
+            else {
+                //[rank, suit] = GetRankAndSuit(discard);  // rank=3-13 (King), Joker=50,
+                id = discard;
+                const _discard = discard[0] + discard[1];
+                $('#divDiscardPile').html("<img id='" + id + "' class='card discard-pile' style='width:100%;text-align:center' src='cards/" + _discard + ".svg' />");
+            }
+        }
+
+        function OnCardHover(isMouseEnter, $hand, $card) {
+            return false;
+        }
+
+
+        function GetCurrentHand() {
+            let deck = [];
+            $('#hand-spades').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            $('#hand-clubs').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            $('#hand-diamonds').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            $('#hand-hearts').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            $('#hand-stars').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            $('#hand-wildcards').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            return deck;
+        }
+
+        function GetCurrentMiddle() {
+            let deck = [];
+            $('#hand-middle').children().each((i, card) => {
+                deck.push(cards.cid($(card)));
+            });
+            return deck;
+        }
+
+        function CountCards() {
+            let hand = GetCurrentHand();
+            $('#cardCount').text('Cards: ' + hand.length);
+            return hand.length;
+        }
+
+        function IsOutOfSuit(deck, cs) {
+            let r, s;
+            for (card of deck) {
+                [r, s] = GetRankAndSuit(card);
+                if (s === cs)
+                    return false;
+            }
+            return true;
+        }
+
+        function GetRankAndSuit(card) {
+            // first, handle jokers
+
+            // joker?  // if no trump defined, return 'J', else, trump suite
+            if (card === 'JJ') {
+                return [50, 'J'];
+            }
+
+            let rank = 0;
+            // no trump defined, treat jacks normally
+            switch (card[0]) {
+                case 'T': rank = 10; break;
+                case 'J': rank = 11; break;
+                case 'Q': rank = 12; break;
+                case 'K': rank = 13; break;
+                default: rank = parseInt(card[0]);
+            }
+
+            return [rank, card[1]];
+        }
+
+        function SortCards(a, b) {
+            let sa = '';  // suit (character)
+            let sb = '';
+            let na = 0; // numeric ranking of suits
+            let nb = 0;
+            let ra = 0; // rank
+            let rb = 0;
+
+            [ra, sa] = GetRankAndSuit(a);
+            [rb, sb] = GetRankAndSuit(b);
+
+            switch (sa) {
+                case 'S': na = 0; break;
+                case 'C': na = 1; break;
+                case 'D': na = 2; break;
+                case 'H': na = 3; break;
+                case 'R': na = 4; break;
+                case 'J': na = 5; break;  // joker
+            }
+
+            switch (sb) {
+                case 'S': nb = 0; break;
+                case 'C': nb = 1; break;
+                case 'D': nb = 2; break;
+                case 'H': nb = 3; break;
+                case 'R': nb = 4; break;
+                case 'J': nb = 5; break;  // joker
+            }
+            // different suits?
+            if (na !== nb)
+                return (na - nb);
+
+            // note: no jokers after this, ther are filtered out above
+            // same suit, so sort by rank
+            return (ra - rb);
+        }
+
+        function IsTrump(card) {
+            if (trumpSuit === '' || trumpSuit === 'N')
+                return false;
+
+            // joker?
+            if (card[1] === 'J' || card === 'Jr' || card === 'Jb')
+                return true;
+
+            // jack and trump defined?
+            if (card[0] === 'J') {
+                switch (card[1]) {
+                    case 'S':
+                        return (trumpSuit === 'S') ? 1 : (trumpSuit === 'C') ? -1 : 0;
+                    case 'C':
+                        return (trumpSuit === 'C') ? 1 : (trumpSuit === 'S') ? -1 : 0;
+                    case 'D':
+                        return (trumpSuit === 'D') ? 1 : (trumpSuit === 'H') ? -1 : 0;
+                    case 'H':
+                        return (trumpSuit === 'H') ? 1 : (trumpSuit === 'D') ? -1 : 0;
+                }
+            }
+
+            // not a jack
+            return (card[1] === trumpSuit) ? true : false;
+        }
+
+        function SetGameMsg(hdr, text, buttonFn, green) {
+            let $gmHdr = $('#gameMsgHdr');
+            let $gmTxt = $('#gameMsgText');
+
+            if (green)
+                $('#gameMsgPanel').css('background-color', 'blush pink');   //removeClass('red').addClass('green');
+            else
+                $('#gameMsgPanel').css('background-color', 'burnt pink'); //removeClass('green').addClass('red');
+
+            if (buttonFn !== null) {
+                $('#gameMsgBtn').click(buttonFn);
+                $('#gameMsgBtn').show();
+            }
+            else {
+                $('#gameMsgBtn').hide();
+            }
+
+            if (hdr === null)
+                $gmHdr.hide();
+            else {
+                $gmHdr.html(hdr);
+                $gmHdr.show();
+            }
+
+            if (text === null)
+                $gmTxt.hide();
+            else {
+                $gmTxt.html(text);
+                $gmTxt.show();
+            }
+
+        }
+
+        function ToastMsg(msg, title, seconds) {
+
+            //$('#mainPanel').toast({ message: msg, displayTime: 5000, class: 'grey' });
+
+            const color = 'yellow';
+
+            $('#mainPanel')
+                .toast({
+                    title: title,
+                    message: msg,
+                    class: 'inverted ' + color,
+                    displayTime: seconds * 1000,
+                    className: {
+                        toast: 'ui message'
+                    }
+                });
+        }
+
+        function GetCardTextFromID(card) {
+            let rank = card[0]; // rank
+            let suit = card[1]; // suit
+
+            if (suit === 'J') // joker
+                return 'Joker';
+            else if (suit === 'r') // joker
+                return 'Red Joker';
+            if (suit === 'b') // joker
+                return 'Black Joker';
+
+            switch (rank) {
+                case '4': rank = 'Four'; break;
+                case '5': rank = 'Five'; break;
+                case '6': rank = 'Six'; break;
+                case '7': rank = 'Seven'; break;
+                case '8': rank = 'Eight'; break;
+                case '9': rank = 'Nine'; break;
+                case 'T': rank = 'Ten'; break;
+                case 'J': rank = 'Jack'; break;
+                case 'Q': rank = 'Queen'; break;
+                case 'K': rank = 'King'; break;
+                case 'A': rank = 'Ace'; break;
+            }
+
+            switch (suit) {
+                case 'S': suit = 'Spades'; break;
+                case 'C': suit = 'Clubs'; break;
+                case 'D': suit = 'Diamonds'; break;
+                case 'H': suit = 'Hearts'; break;
+            }
+
+            return rank + ' of ' + suit;
+        }
+
+        function ShowValidCardsOnly() {
+            let validOnly = $('#validOnly').checkbox('is checked');
+
+            $('#hand-spades').children().each((i, card) => {
+                if (validOnly && IsPlayableCard(cards.cid($(card))) === false) {
+                    $(card).hide();
+                }
+                else
+                    $(card).show();
+            });
+            $('#hand-clubs').children().each((i, card) => {
+                if (validOnly && IsPlayableCard(cards.cid($(card))) === false) {
+                    $(card).hide();
+                }
+                else
+                    $(card).show();
+            });
+            $('#hand-diamonds').children().each((i, card) => {
+                if (validOnly && IsPlayableCard(cards.cid($(card))) === false) {
+                    $(card).hide();
+                }
+                else
+                    $(card).show();
+            });
+            $('#hand-hearts').children().each((i, card) => {
+                if (validOnly && IsPlayableCard(cards.cid($(card))) === false) {
+                    $(card).hide();
+                }
+                else
+                    $(card).show();
+            });
+            $('#hand-extras').children().each((i, card) => {
+                if (validOnly && IsPlayableCard(cards.cid($(card))) === false) {
+                    $(card).hide();
+                }
+                else
+                    $(card).show();
+            });
+        }
+
+        function HighlightCurrentPlayer(currentPlayer) {
+        }
+
+
+        function ConnectToNewUser(userID, stream) {
+            const call = myPeer.call(userID, stream);
+            const video = document.createElement('video');
+            call.on('stream', userVideoStream => {
+                addVideoStream(video, userVideoStream);
+            });
+            call.on('close', () => {
+                video.remove();
+            });
+
+            peers[userID] = call;
+        }
+
+        // user clicked the "start game" button
+        function StartNewRoom() {
+            username = $("#username1").val();
+
+            if (username === '')
+                username = $("#selectUser").options[$("#selectUser").selectedIndex].val();
+            // strip out illegal characters
+            username = username.replace(/[<,>,&,=]/gi, '');
+            if (username.length === 0) {
+                $('#joinMsg').removeClass('green').addClass('red');
+                return false;
+            }
+
+            socket.emit('add room', (newRoomID) => {
+                roomID = newRoomID;
+
+                $("#player").text("Player: " + username);
+
+                socket.emit("new player", roomID, username, "player");
+                //socket.emit("chat message", roomID, "Player " + username + " has joined the game");
+
+                $('#obsPanel').hide();
+                $('#join').modal('hide');
+            });
+        }
+
+        /*
+        function IsMisdeal(hand) {
+            let misdeal = true;
+            for (card of hand) {
+                switch (card[0]) {
+                    case 'J':    // jack or joker
+                    case 'Q':
+                    case 'K':
+                        misdeal = false;
+                        break;
+                    default:
+                        continue;
+                }
+            }
+            return misdeal;
+        }
+        */
+
+        function ResetPlayPanel() {
+            $('.playName').removeClass('currentPlayer').removeClass('pastPlayer');
+            $('.playBid').text('');
+            $('.playSugBid').text('');
+            $('.playSugBid').hide('');
+        }
+
+
+
+        function UpdateLeaderboard() {
+            socket.emit('get leaderboard', (playerStats) => {
+                let table = [];
+                for (player in playerStats) {
+                    let ps = playerStats[player];
+                    let row = [];
+                    row.push(player);
+                    row.push(ps['Games']);
+                    row.push(ps['Games Won']);
+                    row.push(ps['% Won'].toFixed(2));
+
+                    if (ps['AHS'] === null)
+                        row.push('--');
+                    else
+                        row.push(ps['AHS'].toFixed(2));
+                    table.push(row);
+                }
+
+                $('#leaderboard').DataTable({
+                    data: table,
+                    columns: [
+                        { title: 'Name' },
+                        { title: 'Games' },
+                        { title: 'Games Won' },
+                        { title: '% Won' },
+                        { title: 'Avg Hand Strength' }
+                    ],
+                    destroy: true,
+                    'paging': false,
+                    'scrollY': '12em',
+                    'scrollCollapse': true,
+                    'searching': false,
+                    'info': false
+                });
+
+            });
+        }
+
+
+        let hsChart = null;
+        let hsCount = 0;
+        function UpdateHSChart(hsArray) {
+            // get player names
+
+            if (hsChart === null) {
+                hsCount = 0;
+
+                let ctx = document.getElementById('myChart').getContext('2d');
+                hsChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [], // x-axis
+                        datasets: [{
+                            label: teamA[0],
+                            backgroundColor: 'red',
+                            borderColor: 'red',
+                            fill: false,
+                            data: []
+                        }, {
+                            label: teamA[1],
+                            backgroundColor: 'aqua',
+                            borderColor: 'aqua',
+                            fill: false,
+                            data: []
+                        }, {
+                            label: teamB[0],
+                            backgroundColor: 'green',
+                            borderColor: 'green',
+                            fill: false,
+                            data: []
+                        }, {
+                            label: teamB[1],
+                            backgroundColor: 'yellow',
+                            borderColor: 'yellow',
+                            fill: false,
+                            data: []
+                        }]
+                    },
+                    options: {
+                        //title: { display: true, text: 'Hand Strengths this Game' }
+                        legend: {
+                            labels: {
+                                fontColor: 'white'
+                            }
+                        }
+                    }
+                });     // end of:  new Chart(...)
+            }   // end of: if (hsChart === null)
+
+            // update chart data with latest counts
+            means = [0, 0, 0, 0];
+            hsChart.data.labels.push(hsCount.toString());
+            hsChart.data.datasets.forEach((dataset, index) => {
+                if (hsArray[index] === 'T')
+                    dataset.data.push(10);
+                else
+                    dataset.data.push(hsArray[index]);
+
+                //means[i] += data.push()
+            });
+            hsChart.update();
+            hsCount += 1;
+        }
+
+        /*
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function FadeMiddle() {
+            let $middle = $('#hand-middle');  // first car
+
+            await sleep(1000);
+
+            while ($middle.children().length > 0) {
+                let $last = $middle.children().last();
+                let card = cards.cid($last);
+                // make a new card element
+                let $card = $("<img class='card' style='width:100px' src='cards/" + card + ".svg' />");
+
+                [r, s] = GetRankAndSuit(card);
+                switch (s) {
+                    case 'S': $('#hand-spades').append($card.hide().fadeIn(800)); break;
+                    case 'C': $('#hand-clubs').append($card.hide().fadeIn(800)); break;
+                    case 'D': $('#hand-diamonds').append($card.hide().fadeIn(800)); break;
+                    case 'H': $('#hand-hearts').append($card.hide().fadeIn(800)); break;
+                    case 'N': $('#hand-extras').append($card.hide().fadeIn(800)); break;
+                }
+                $last.fadeOut(800, function () {
+                    $(this).remove();
+
+                    CountCards();
+
+                });
+                await sleep(1000);
+            }
+
+            hand = GetCurrentHand();
+            hand.sort(SortCards);
+            DistributeHand(hand);
+        }
+        */
+
+        function AddBot() {
+            socket.emit('new player', roomID, 'bot', 'bot');
+        }
+
+//function UpdateBidSuggestions() {
+//
+//    socket.emit('suggest bid', roomID, 0,0, (team,player, bid) => {
+//       ;
+//    });
+//}
+
+
+
+    </script>
+
+
+
+</body>
+
+</html>

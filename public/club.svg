@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   width="32.376507mm"
+   height="32.505505mm"
+   viewBox="0 0 32.376507 32.505505"
+   version="1.1"
+   id="svg66">
+  <defs
+     id="defs60" />
+  <metadata
+     id="metadata63">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1"
+     transform="translate(-55.249257,-44.601414)">
+    <g
+       id="g6650"
+       style="display:inline"
+       transform="matrix(0.57148179,0,0,0.5688632,-548.82724,-186.05862)">
+      <g
+         transform="translate(-6.5580369e-5)"
+         id="g8311">
+        <g
+           style="display:inline"
+           id="g8869-5"
+           transform="translate(-5060.9526,3024.9515)">
+          <g
+             transform="matrix(0.30106207,0,0,0.30106207,5730.6419,-1948.1116)"
+             id="g8567-1" />
+        </g>
+      </g>
+      <g
+         id="g6643">
+        <path
+           style="display:inline;fill:#000000;fill-opacity:1"
+           d="m 1078.0113,462.61656 c 2.879,-5.77557 4.9759,-11.701 5.3481,-18.03733 0.3416,-2.33169 -1.0746,-2.37079 -1.2881,-0.7286 -4.0764,15.59279 -25.7627,11.37043 -25.0171,-3.29651 0.605,-11.89477 12.4195,-14.45376 18.5823,-10.56451 2.4336,1.43278 2.2961,0.5746 0.9679,-0.91177 -9.1548,-10.21145 -3.6101,-23.36174 8.7612,-23.60244 13.3796,0.79343 16.8512,14.86989 8.6442,23.14833 -1.0206,0.99462 -3.2835,4.19134 0.123,1.9563 8.2868,-5.888 19.7873,0.44285 19.5527,9.52075 -0.4327,16.73889 -20.8391,17.98729 -25.2032,4.00577 -0.4198,-1.55017 -1.6291,-2.32865 -1.295,0.30427 0.6049,4.76663 1.8565,11.95343 5.4374,18.20574 z"
+           id="path3235" />
+      </g>
+    </g>
+  </g>
+</svg>

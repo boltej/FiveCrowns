@@ -1,0 +1,27 @@
+{
+  "name": "fivehundred",
+  "version": "1.0.0",
+  "description": "500 Card game server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
+  },
+  "author": "bolte",
+  "license": "ISC",
+  "dependencies": {
+    "cardsJS": "^1.1.1",
+    "chart.js": "^2.9.4",
+    "csv-parser": "^3.0.0",
+    "csv-write-stream": "^2.0.0",
+    "ejs": "^3.1.5",
+    "express": "^4.17.1",
+    "fomantic-ui": "^2.8.7",
+    "nodemon": "^2.0.6",
+    "socket.io": "^4.0.0",
+    "uuid": "^8.3.1"
+  },
+  "devDependencies": {
+    "cors": "^2.8.5"
+  }
+}
